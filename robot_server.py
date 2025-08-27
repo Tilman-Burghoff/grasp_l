@@ -5,7 +5,6 @@ import numpy as np
 import robotic as ry
 import pyrealsense2 as rs
 
-
 class RobotServer:
 
     def __init__(self, address: str="tcp://*:1234", on_real: bool=False, verbose: int=0):
@@ -16,7 +15,6 @@ class RobotServer:
         self.bot = ry.BotOp(self.C, on_real)
         self.bot.home(self.C)
         self.verbose = verbose
-
         context = zmq.Context()
         self.socket = context.socket(zmq.REP)
         self.address = address
@@ -109,6 +107,10 @@ class RobotServer:
             
             feedback["color_image"] = color_image
             feedback["ir_image"] = ir_image
+
+        elif command == "getCameraFxycxy":
+            Fxycxy = self.bot.getCameraFxycxy(message["sensor_name"])
+            feedback["Fxycxy"] = Fxycxy
         
         else:
             raise Exception(f"Command {message['command']} not implemented.")
