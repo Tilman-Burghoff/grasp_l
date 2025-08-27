@@ -1,0 +1,9 @@
+checkpoints/
+aigen_objs/
+random_objs.g
+z.*
+*.npc
+*.pyc
+__pycache__/
+*.png
+*.npz
