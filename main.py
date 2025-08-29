@@ -4,7 +4,7 @@ from scenes import get_config_table
 from motions import move_to_look, grasp_motion
 from grasping import contact_graspnet_inference
 import komo_paths as kp
-
+import numpy as np
 import robotic as ry
 
 print(ry.raiPath(''))
@@ -24,29 +24,34 @@ C.setJointState(path[-1])
 
 pcs, rgbs = get_point_clouds(C, camera_frame_names, robot_api, on_real=ON_REAL, verbose=0)
 
+C.addFrame('pcl', 'l_cameraWrist').setPointCloud(pcs[0], rgbs[0])
+C.view(True)
 import torch
 torch.cuda.empty_cache()
 grasps = contact_graspnet_inference(pcs[0], rgbs[0], local_regions=False, filter_grasps=False, forward_passes=2, verbose=1, from_top=10)
 
-grasp_camera_frame = C.addFrame('grasp_camera', 'camera')
+camera_frame = C.getFrame('l_cameraWrist')
+grasp_camera_frame = C.addFrame('grasp_camera', 'l_cameraWrist')
 grasp_frame = C.addFrame('grasp').setShape(ry.ST.marker, [.2])
 
 
 komo = ry.KOMO(C, 1,1,10,True)
 komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
 komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq)
-komo.addObjective([], ry.FS.poseDiff, ['l_gripper', 'grasp'], ry.OT.eq)
+komo.addObjective([], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq)
 
+qHome = C.getJointState()
 for g in grasps:
-   # grasp_camera_frame.setRelativePose(g)
-    grasp_frame.setPose(g) #grasp_camera_frame.getPose())
+    C.setJointState(qHome)
+    grasp_camera_frame.setRelativePose(g)
+    grasp_frame.setPose(grasp_camera_frame.getPose())
     komo.updateRootObjects(C)
     ret = ry.NLP_Solver(komo.nlp(), verbose=0 ) .solve()
     C.view()
     komo.view(True, f'candidate grasp, {ret.feasible=}')
-    if ret.feasible:
-        print("Found a feasible grasp")
-        break
+    #if ret.feasible:
+    #    print("Found a feasible grasp")
+    #    break
 
 komo.view(True, "grasp pose")
 
