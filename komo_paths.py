@@ -89,15 +89,13 @@ def search_path_orient_gripper(C):
 
 
 @_komo_wrapper
-def look_at_target(C, target, height):
-    q0 = C.getJointState()
+def look_at_target(C, target_name, height):
     komo = ry.KOMO(C, 1, 1, 0, True)
-
-    above_target = target + np.array([0,0, height])
-    komo.addObjective([], ry.FS.jointState, [], ry.OT.sos, [1e-1], q0) #cost: close to 'current state'
+    
+    komo.addControlObjective([], 0, 1e-1)
 
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1])
-    komo.addObjective([], ry.FS.position, ['l_cameraWrist'], ry.OT.eq, np.eye(3), above_target) 
+    komo.addObjective([], ry.FS.positionDiff, ['l_cameraWrist', target_name], ry.OT.eq, np.eye(3), [0,0,height]) 
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
 
     # point camera downwards
