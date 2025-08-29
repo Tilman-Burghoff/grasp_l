@@ -100,6 +100,14 @@ def sample_best_grasp(
     
     return pose
 
+def graspse3_to_gripperpose(grasp: np.ndarray) -> np.ndarray:
+    grasp_pos = grasp[:3, 3] + grasp[:3, 2:3].flatten() * 0.1034  # Offset to gripper fingers
+
+    grap_rot = rowan.from_matrix(grasp[:3, :3])
+    q_x = rowan.from_axis_angle([1, 0, 0], np.pi)
+    grap_rot = rowan.multiply(q_x, grap_rot)  # 180 degrees around the x axis
+
+    return np.concatenate((grasp_pos, grap_rot))
 
 def contact_graspnet_inference(point_cloud: np.ndarray,
                                 rgb: np.ndarray,
@@ -129,6 +137,9 @@ def contact_graspnet_inference(point_cloud: np.ndarray,
     #                                                                             skip_border_objects=skip_border_objects, 
     #                                                                             z_range=z_range)
     
+    #segmap = np.zeros(rgb.shape[:1], dtype=np.int32)
+    #segmap[:10:-10, 10:-10] = 1
+
     pred_grasps_cam, scores, contact_pts, _ = grasp_estimator.predict_scene_grasps(point_cloud, 
                                                                                     pc_segments=pc_segments, 
                                                                                     local_regions=local_regions, 
@@ -142,15 +153,16 @@ def contact_graspnet_inference(point_cloud: np.ndarray,
     pred_grasps_cam[-1] = pred_grasps_cam[-1][idxs]
     scores[-1] = scores[-1][idxs]
 
-    if len(scores[-1]) > from_top:
+    """if len(scores[-1]) > from_top:
         sorted_idx = np.argsort(scores[-1])[-from_top:]
         best_grasp_idx = np.random.choice(sorted_idx)
     else:
         idxs = np.array(list(range(len(scores[-1]))))
         best_grasp_idx = np.random.choice(idxs)
+    """
 
-    best_grasp = pred_grasps_cam[-1][best_grasp_idx]
-
+    """best_grasp = pred_grasps_cam[-1][best_grasp_idx]
+    print(pred_grasps_cam)
     best_grasp_pos = best_grasp[:3, 3] + best_grasp[:3, 2:3].flatten() * 0.1034  # Offset to gripper fingers
 
     best_grasp_rot = rowan.from_matrix(best_grasp[:3, :3])
@@ -158,12 +170,12 @@ def contact_graspnet_inference(point_cloud: np.ndarray,
     best_grasp_rot = rowan.multiply(q_x, best_grasp_rot)  # 180 degrees around the x axis
 
     best_pose = np.concatenate((best_grasp_pos, best_grasp_rot))
-    
+    """
     if verbose:
         visualize_grasps(point_cloud, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=rgb*255)
-        pred_grasps_cam[-1] = [pred_grasps_cam[-1][best_grasp_idx]]
-        scores[-1] = [scores[-1][best_grasp_idx]]
-        visualize_grasps(point_cloud, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=rgb*255)
+        #pred_grasps_cam[-1] = [pred_grasps_cam[-1][best_grasp_idx]]
+        #scores[-1] = [scores[-1][best_grasp_idx]]
+        #visualize_grasps(point_cloud, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=rgb*255)
 
-    return best_pose
+    return [graspse3_to_gripperpose(g) for g in pred_grasps_cam[-1]]
     
