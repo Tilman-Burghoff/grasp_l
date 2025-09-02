@@ -146,12 +146,12 @@ def contact_graspnet_inference(point_cloud: np.ndarray,
                                                                                     filter_grasps=filter_grasps, 
                                                                                     forward_passes=forward_passes)
     
-    idxs = []
-    for i, pg in enumerate(pred_grasps_cam[-1]):
-        if np.linalg.norm(pg[:3, 3].flatten()) < .7:
-            idxs.append(i)
-    pred_grasps_cam[-1] = pred_grasps_cam[-1][idxs]
-    scores[-1] = scores[-1][idxs]
+    #idxs = []
+    #for i, pg in enumerate(pred_grasps_cam[-1]):
+    #    if np.linalg.norm(pg[:3, 3].flatten()) < .7:
+    #        idxs.append(i)
+    #pred_grasps_cam[-1] = pred_grasps_cam[-1][idxs]
+    #scores[-1] = scores[-1][idxs]
 
     """if len(scores[-1]) > from_top:
         sorted_idx = np.argsort(scores[-1])[-from_top:]
@@ -177,5 +177,5 @@ def contact_graspnet_inference(point_cloud: np.ndarray,
         #scores[-1] = [scores[-1][best_grasp_idx]]
         #visualize_grasps(point_cloud, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=rgb*255)
 
-    return [graspse3_to_gripperpose(g) for g in pred_grasps_cam[-1]]
+    return [graspse3_to_gripperpose(g) for g in pred_grasps_cam[-1]], scores[-1]
     
