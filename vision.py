@@ -128,7 +128,8 @@ def get_stereo_images_zed2() -> tuple[np.ndarray, np.ndarray]:
 
 def get_point_clouds(C: ry.Config, camera_frames: list[str],
                      robot_api=None,
-                     on_real: bool=False, verbose: int=0
+                     on_real: bool=False, verbose: int=0,
+                     distance_boundaries: tuple[float, float] | None = None
                      )-> tuple[list[np.ndarray], list[np.ndarray]]:
 
     pcs = []
@@ -160,6 +161,11 @@ def get_point_clouds(C: ry.Config, camera_frames: list[str],
             non_zero_indices = np.where(~np.all(pc == 0, axis=1))[0]
             pc = pc[non_zero_indices]
             rgb = rgb[non_zero_indices] / 255
+            if distance_boundaries is not None:
+                dist = np.linalg.norm(pc, axis=-1)
+                dist_mask = (distance_boundaries[0]<dist) & (dist<distance_boundaries[1])
+                pc = pc[dist_mask]
+                rgb = rgb[dist_mask]
             pcs.append(pc)
             rgbs.append(rgb)
 

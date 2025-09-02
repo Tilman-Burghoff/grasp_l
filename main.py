@@ -6,6 +6,7 @@ from grasping import contact_graspnet_inference
 import komo_paths as kp
 import numpy as np
 import robotic as ry
+import matplotlib.pyplot as plt
 
 print(ry.raiPath(''))
 
@@ -18,16 +19,18 @@ robot_api = RobotAPI(verbose=2, use_foundation_stereo=False, address="tcp://130.
 C = get_config_table(verbose=1)
 qHome = C.getJointState()
 C.addFrame('marker').setPosition(MARKER_POS).setShape(ry.ST.marker, [.2])
-path = look_with_angle(C, 'marker', .3, .4, verbose=1)
+path = look_with_angle(C, 'marker', distance=.3, angle=np.pi/5, verbose=1)
 
 if ON_REAL:
     robot_api.move(path, [3.])
 C.setJointState(path[-1])
 
-pcs, rgbs = get_point_clouds(C, camera_frame_names, robot_api, on_real=ON_REAL, verbose=0)
+pcs, rgbs = get_point_clouds(C, camera_frame_names, robot_api, on_real=ON_REAL, verbose=0)#, distance_boundaries=(0.15, 0.7))
 
+print(pcs[0].shape, rgbs[0].shape)
 #C.addFrame('pcl', 'l_cameraWrist').setPointCloud(pcs[0], rgbs[0])
 #C.view(True)
+
 import torch
 torch.cuda.empty_cache()
 grasps, scores = contact_graspnet_inference(pcs[0], rgbs[0], local_regions=False, filter_grasps=False, forward_passes=2, verbose=1, from_top=10)
@@ -41,13 +44,13 @@ if len(grasps) == 0:
 camera_frame = C.getFrame('l_cameraWrist')
 grasp_camera_frame = C.addFrame('grasp_camera', 'l_cameraWrist')
 grasp_frame = C.addFrame('grasp').setShape(ry.ST.marker, [.2])
-
+C.addFrame('approach', 'grasp')
 
 filtered_grasps = []
 for i, g in enumerate(grasps):
     grasp_camera_frame.setRelativePose(g)
     grasp_global = grasp_camera_frame.getPose()
-    if grasp_global[2] < .6:
+    if grasp_global[2] < .65:
         continue
     filtered_grasps.append((grasp_global, scores[i]))
 print(len(filtered_grasps), "grasps after filtering")
@@ -59,7 +62,7 @@ filtered_grasps.sort(key = lambda g: g[1])#np.linalg.norm(g[:3] - MARKER_POS))
 komo = ry.KOMO(C, 1,1,10,True)
 komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
 komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e1])
-komo.addObjective([], ry.FS.poseDiff, ['l_gripper', 'grasp'], ry.OT.eq)
+komo.addObjective([], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq)
 
 robot_api.home()
 for g in filtered_grasps:
@@ -72,6 +75,7 @@ for g in filtered_grasps:
     if ret.feasible:
         print("Found a feasible grasp")
         try:
+            C.setJointState(qHome)
             approach, grasp = grasp_motion_global(C, grasp_frame.getPose())
             break
         except:
@@ -83,9 +87,9 @@ else: # we move to this branch if no break occurred
 
 if ON_REAL:
     robot_api.move(approach, [10.])
-    robot_api.move(grasp, [10.])
+    robot_api.move(grasp, [5.])
     robot_api.gripper_close()
     robot_api.home()
-    robot_api.gripper_open()
+    #robot_api.gripper_open()
 
     # robot_api.close()

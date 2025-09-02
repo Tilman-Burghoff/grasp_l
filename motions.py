@@ -43,20 +43,22 @@ def move_to_look(C: ry.Config, obj_frame_name: str, distance: float=.3, verbose:
     return path
 
 
-def look_with_angle(C, target_name, z_dist, distance, verbose=0):
+def look_with_angle(C, target_name, distance, angle, verbose=0):
     komo = ry.KOMO(C, 1, 1, 0, True)
     
     komo.addControlObjective([], 0, 1e-1)
+
+    height = distance * np.cos(angle)
 
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1])
     komo.addObjective([], ry.FS.negDistance, ['l_cameraWrist', target_name], ry.OT.eq, [1], [-distance]) 
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
 
-    komo.addObjective([], ry.FS.positionDiff, ['l_cameraWrist', target_name], ry.OT.eq, [0,0,1], [0,0,z_dist])
+    komo.addObjective([], ry.FS.positionDiff, ['l_cameraWrist', target_name], ry.OT.eq, [0,0,1], [0,0,height])
     # point camera at target
     komo.addObjective([], ry.FS.positionRel, [target_name, 'l_cameraWrist'], ry.OT.eq, [[1,0,0],[0,1,0]])
 
-    komo.addObjective([], ry.FS.positionDiff, ['l_cameraWrist',target_name], ry.OT.ineq, [1,0,0])
+    komo.addObjective([], ry.FS.positionDiff, [target_name,'l_cameraWrist'], ry.OT.ineq, [0,1,0])
     #komo.addObjective([], ry.FS.positionDiff, [target_name, 'l_cameraWrist'], ry.OT.eq, [0,1,0])
     path = solve_komo(komo)
 
@@ -65,22 +67,37 @@ def look_with_angle(C, target_name, z_dist, distance, verbose=0):
 
     return path
 
+
+def add_grasp_pose_constraints(komo: ry.KOMO, grasp_name, gripper_name, t, orient_x = True):
+    komo.addObjective([t], ry.FS.positionDiff, [gripper_name, grasp_name], ry.OT.eq)
+    komo.addObjective([t], ry.FS.scalarProductXZ, [grasp_name, gripper_name], ry.OT.eq)
+    komo.addObjective([t], ry.FS.scalarProductYZ, [grasp_name, gripper_name], ry.OT.eq)
+    komo.addObjective([t], ry.FS.scalarProductZZ, [grasp_name, gripper_name], ry.OT.ineq, [-1]) # scalar of z axis > 0
+    if orient_x:
+        komo.addObjective([t], ry.FS.scalarProductXY, [grasp_name, gripper_name], ry.OT.eq)
+
 def grasp_motion_global(C: ry.Config, grasp_pose: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     grasp_frame = C.addFrame('grasp').setPose(grasp_pose).setShape(ry.ST.marker, [.1])
     approach_frame = C.addFrame('approach', 'grasp').setPose(grasp_pose).setRelativePosition([0., 0., .1]).setShape(ry.ST.marker, [.1])
     q_start = C.getJointState()
+
     komo = ry.KOMO(C, 2, 10, 2, True)
+
     komo.addControlObjective([], 0, 1e-1)
     komo.addControlObjective([], 2, 1e-1)
+
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e0])
+
     komo.addObjective([0.2,1.], ry.FS.positionRel, ['l_gripper', 'approach'], ry.OT.ineq, [-1e0])
-    komo.addObjective([1.], ry.FS.poseDiff, ['l_gripper', 'approach'], ry.OT.eq, [1e0])
-    komo.addObjective([2.], ry.FS.poseDiff, ['l_gripper', 'grasp'], ry.OT.eq, [1e0])
+
+    add_grasp_pose_constraints(komo, 'approach', 'l_gripper', 1, orient_x=True)
+    komo.addObjective([1], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
+    add_grasp_pose_constraints(komo, 'grasp', 'l_gripper', 2, orient_x=True)
+
     komo.addObjective([1,2], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.eq, [[1,0,0],[0,1,0]])
-    # komo.addObjective([3.], ry.FS.jointState, [], ry.OT.eq, [1e0], q_start)
     path = solve_komo(komo, verbose=1)
-    return path[:10], path[10:20]# , path[20:]
+    return path[:10], path[10:20]
 
 
 def grasp_motion(C: ry.Config, grasp_pose: np.ndarray,

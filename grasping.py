@@ -111,6 +111,7 @@ def graspse3_to_gripperpose(grasp: np.ndarray) -> np.ndarray:
 
 def contact_graspnet_inference(point_cloud: np.ndarray,
                                 rgb: np.ndarray,
+                                segmap: np.ndarray=None,
                                 ckpt_dir: str="../contact_graspnet_pytorch/checkpoints/contact_graspnet",
                                 local_regions: bool=False,
                                 filter_grasps: bool=False,
