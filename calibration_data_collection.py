@@ -23,6 +23,8 @@ visited = set()
 no_datapoints = 0
 measurements = []
 for i in range(iters):
+    tracker.position_smoothing = Smoothing.LAST
+    tracker.reset_average()
     print("Move bot into position, press q when done")
     bot.hold(floating=True, damping=False)
     while bot.getKeyPressed() != ord('q'):
@@ -36,8 +38,6 @@ for i in range(iters):
     C.view(False)
     q = C.getJointState()
     print("Collecting measurements")
-    tracker.position_smoothing = Smoothing.LAST
-    tracker.reset_average()
     for i in range(10):
         rgb, depth, points = bot.getImageDepthPcl('l_cameraWrist')
         visible = tracker.track_markers(rgb, points)
@@ -59,7 +59,6 @@ for id in list(visited):
     bot.hold(floating=True, damping=False)
 
     while bot.getKeyPressed() != ord('q'):
-        print(id)
         bot.sync(C, viewMsg=f"Move gripper to marker {id}, then press q")
 
     ground_truth[id] = C.eval(ry.FS.position, ['l_gripper'])[0]
@@ -78,5 +77,3 @@ with open('calibration_data.csv', 'x') as f:
         for id, z_cam in measurement.items():
             z_true = gripper_transform @ np.concatenate((ground_truth[id], [1]))
             f.write(f"{z_cam[0]}, {z_cam[1]}, {z_cam[2]}, {z_true[0]}, {z_true[1]}, {z_true[2]}\n")
-
-

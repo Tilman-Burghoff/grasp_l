@@ -1,3 +1,9 @@
+# This script computes the camera frame by solving the optimization problem
+# argmin_theta 1/n sum_(z_cam, z_true) ||T_theta * z_true - z_cam|| st. ||q|| = 1
+# using the data (z_cam, z_true) collected by calibration_data_collection.py
+# theta = (t, q)\in R^7 is the transformation vector consisting of the translation t and rotation q as a normalized quaternion.
+# T is the homogenous transformation matrix T = [[R_q,t], [0,1]], where R_q is the rotation corresponding to the quaternion
+
 def objective(x):
     t = x[:3]
     q = x[3:]
