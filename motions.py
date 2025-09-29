@@ -73,17 +73,9 @@ def look_with_angle(C, target_name, distance, angle, verbose=0):
     return path
 
 
-def add_grasp_pose_constraints(komo: ry.KOMO, grasp_name, gripper_name, t, orient_x = True):
-    komo.addObjective([t], ry.FS.positionDiff, [gripper_name, grasp_name], ry.OT.eq)
-    komo.addObjective([t], ry.FS.scalarProductXZ, [grasp_name, gripper_name], ry.OT.eq)
-    komo.addObjective([t], ry.FS.scalarProductYZ, [grasp_name, gripper_name], ry.OT.eq)
-    komo.addObjective([t], ry.FS.scalarProductZZ, [grasp_name, gripper_name], ry.OT.ineq, [-1]) # scalar of z axis > 0
-    if orient_x:
-        komo.addObjective([t], ry.FS.scalarProductXY, [grasp_name, gripper_name], ry.OT.eq)
-
-def grasp_motion_global(C: ry.Config, grasp_pose: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def grasp_motion_global(C: ry.Config, grasp_pose: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    # grasp motion global wittout approach frame
     grasp_frame = C.addFrame('grasp').setPose(grasp_pose).setShape(ry.ST.marker, [.1])
-    approach_frame = C.addFrame('approach', 'grasp').setPose(grasp_pose).setRelativePosition([0., 0., .1]).setShape(ry.ST.marker, [.1])
     q_start = C.getJointState()
 
     komo = ry.KOMO(C, 2, 10, 2, True)
@@ -94,13 +86,25 @@ def grasp_motion_global(C: ry.Config, grasp_pose: np.ndarray) -> tuple[np.ndarra
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e0])
 
-    komo.addObjective([0.2,1.], ry.FS.positionRel, ['l_gripper', 'approach'], ry.OT.ineq, [0,0,-1e0])
+    # keep behind xy plane to not accidentaly knock over the object
+    komo.addObjective([0.2,1.], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.1]) # TODO target correct?
 
-    add_grasp_pose_constraints(komo, 'approach', 'l_gripper', 1, orient_x=True)
     komo.addObjective([1], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
-    add_grasp_pose_constraints(komo, 'grasp', 'l_gripper', 2, orient_x=True)
+    
+    # orientation for final approach
+    # we dont do quaternion bcs gripper is symmetric along xz plane (more DOF for us :) )
+    # align gripper z with grasp z
+    komo.addObjective([1,2], ry.FS.scalarProductXZ, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([1,2], ry.FS.scalarProductYZ, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([1,2], ry.FS.scalarProductZZ, ['grasp', 'l_gripper'], ry.OT.ineq, [-1]) # scalar of z axis > 0
+    # align gripper x with grasp x (up to 180deg rotation)
+    komo.addObjective([1,2], ry.FS.scalarProductXY, ['grasp', 'l_gripper'], ry.OT.eq)
 
+    # approach in straight line
     komo.addObjective([1,2], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.eq, [[1,0,0],[0,1,0]])
+
+    komo.addObjective([2], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq)
+
     path = solve_komo(komo, verbose=1)
     return path[:10], path[10:20]
 
