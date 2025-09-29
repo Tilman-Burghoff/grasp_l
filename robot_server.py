@@ -3,7 +3,6 @@ import zmq
 import pickle
 import numpy as np
 import robotic as ry
-import pyrealsense2 as rs
 import traceback
 
 
@@ -12,7 +11,7 @@ class RobotServer:
     def __init__(self, address: str="tcp://*:1234", on_real: bool=False, verbose: int=0):
         
         self.C = ry.Config()
-        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle_camera.g"))
+        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle.g"))
         self.C.view(False)
         self.bot = ry.BotOp(self.C, on_real)
         self.bot.home(self.C)
@@ -21,24 +20,9 @@ class RobotServer:
         self.socket = context.socket(zmq.REP)
         self.address = address
         self.socket.bind(address)
+        self.bot.gripperClose(ry._left)
 
-        # Realsense
-        serial_left = "108322073334"
 
-        self.pipeline_left = rs.pipeline()
-
-        config_left = rs.config()
-
-        config_left.enable_device(serial_left)
-
-        config_left.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        config_left.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
-
-        self.pipeline_left.start(config_left)
-
-    
-    def __del__(self):
-        self.pipeline_left.stop()
 
     def send_error_message(self, text):
         message = {}
@@ -84,23 +68,7 @@ class RobotServer:
             feedback["rgb"] = rgb
             feedback["depth"] = depth
             feedback["point_cloud"] = point_cloud
-
-        elif command == "getRealSenseStereo":
-            if "r_" in command["sensor_name"]:
-                frames = self.pipeline_right.wait_for_frames()
-            else:
-                frames = self.pipeline_left.wait_for_frames()
-
-            color_frame = frames.get_color_frame()
-            ir_frame = frames.get_infrared_frame(2)
-
-            color_image = np.asanyarray(color_frame.get_data())
-            ir_image = np.asanyarray(ir_frame.get_data())
-            ir_image = cv2.cvtColor(ir_image, cv2.COLOR_GRAY2RGB)
-            
-            feedback["color_image"] = color_image
-            feedback["ir_image"] = ir_image
-
+        
         elif command == "getCameraFxycxy":
             Fxycxy = self.bot.getCameraFxycxy(message["sensor_name"])
             feedback["Fxycxy"] = Fxycxy
@@ -121,8 +89,9 @@ class RobotServer:
             try:
                 client_input = pickle.loads(client_input)
             except Exception as e:
-                print('\n',e)
+                print()
                 traceback.print_exc()
+                print()
                 self.send_error_message(f"Error while loading message: {e}")
                 
             if self.verbose:
@@ -135,8 +104,9 @@ class RobotServer:
                     feedback = self.execute_command(client_input)
 
             except Exception as e:
-                print(e)
+                print()
                 traceback.print_exc()
+                print()
                 self.send_error_message(f"Error while executing command: {e}")
             
             message = {}
