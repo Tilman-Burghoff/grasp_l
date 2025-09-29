@@ -1,5 +1,6 @@
 import numpy as np
 import robotic as ry
+from pprint import pprint
 
 
 def solve_komo(komo: ry.KOMO, verbose: int=0) -> np.ndarray:
@@ -11,8 +12,9 @@ def solve_komo(komo: ry.KOMO, verbose: int=0) -> np.ndarray:
     
     if not ret.feasible:
         print("KOMO not possible :(")
-        komo.report(plotOverTime=True)
+        pprint(komo.report(plotOverTime=True))
         komo.view(True)
+    
         raise Exception("KOMO not possible :(")
 
     if verbose:
@@ -59,6 +61,9 @@ def look_with_angle(C, target_name, distance, angle, verbose=0):
     komo.addObjective([], ry.FS.positionRel, [target_name, 'l_cameraWrist'], ry.OT.eq, [[1,0,0],[0,1,0]])
 
     komo.addObjective([], ry.FS.positionDiff, [target_name,'l_cameraWrist'], ry.OT.ineq, [0,1,0])
+    
+    # hack to make cam upright
+    komo.addObjective([], ry.FS.scalarProductYZ, ['l_cameraWrist', 'origin'], ry.OT.ineq, [1], [-.7])
     #komo.addObjective([], ry.FS.positionDiff, [target_name, 'l_cameraWrist'], ry.OT.eq, [0,1,0])
     path = solve_komo(komo)
 
@@ -89,7 +94,7 @@ def grasp_motion_global(C: ry.Config, grasp_pose: np.ndarray) -> tuple[np.ndarra
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e0])
 
-    komo.addObjective([0.2,1.], ry.FS.positionRel, ['l_gripper', 'approach'], ry.OT.ineq, [-1e0])
+    komo.addObjective([0.2,1.], ry.FS.positionRel, ['l_gripper', 'approach'], ry.OT.ineq, [0,0,-1e0])
 
     add_grasp_pose_constraints(komo, 'approach', 'l_gripper', 1, orient_x=True)
     komo.addObjective([1], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
