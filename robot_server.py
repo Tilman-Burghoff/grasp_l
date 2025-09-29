@@ -4,13 +4,15 @@ import pickle
 import numpy as np
 import robotic as ry
 import pyrealsense2 as rs
+import traceback
+
 
 class RobotServer:
 
     def __init__(self, address: str="tcp://*:1234", on_real: bool=False, verbose: int=0):
         
         self.C = ry.Config()
-        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandasTable.g"))
+        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle_camera.g"))
         self.C.view(False)
         self.bot = ry.BotOp(self.C, on_real)
         self.bot.home(self.C)
@@ -22,30 +24,21 @@ class RobotServer:
 
         # Realsense
         serial_left = "108322073334"
-        serial_right = "102422071099"
 
         self.pipeline_left = rs.pipeline()
-        self.pipeline_right = rs.pipeline()
 
         config_left = rs.config()
-        config_right = rs.config()
 
         config_left.enable_device(serial_left)
-        config_right.enable_device(serial_right)
 
         config_left.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         config_left.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
 
-        config_right.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        config_right.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
-
         self.pipeline_left.start(config_left)
-        self.pipeline_right.start(config_right)
 
     
     def __del__(self):
         self.pipeline_left.stop()
-        self.pipeline_right.stop()
 
     def send_error_message(self, text):
         message = {}
@@ -128,6 +121,8 @@ class RobotServer:
             try:
                 client_input = pickle.loads(client_input)
             except Exception as e:
+                print('\n',e)
+                traceback.print_exc()
                 self.send_error_message(f"Error while loading message: {e}")
                 
             if self.verbose:
@@ -140,6 +135,8 @@ class RobotServer:
                     feedback = self.execute_command(client_input)
 
             except Exception as e:
+                print(e)
+                traceback.print_exc()
                 self.send_error_message(f"Error while executing command: {e}")
             
             message = {}
@@ -158,5 +155,5 @@ class RobotServer:
 
 
 if __name__ == "__main__":
-    robot = RobotServer(verbose=1)
+    robot = RobotServer(verbose=1, on_real=True)
     robot.run()
