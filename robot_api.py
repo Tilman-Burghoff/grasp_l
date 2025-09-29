@@ -44,7 +44,7 @@ class RobotAPI:
         
         message = {}
         message["command"] = "move"
-        message["path"] = path
+        message["path"] = path.tolist()
         message["times"] = times
 
         reply = self.send_message(message)
@@ -56,7 +56,7 @@ class RobotAPI:
         
         message = {}
         message["command"] = "moveAutoTimed"
-        message["path"] = path
+        message["path"] = path.tolist()
         message["time_cost"] = time_cost
 
         reply = self.send_message(message)
