@@ -12,7 +12,8 @@ def get_config_floating(verbose: int=0) -> ry.Config:
 
 def get_config_table(verbose: int=0) -> ry.Config:
     C = ry.Config()
-    C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandasTableCamerasCalibrated.g"))
+    print(ry.raiPath(''))
+    C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle_camera.g"))
     # C.addFile("./banana.g")
 
     S = ry.Simulation(C, ry.SimulationEngine.physx, verbose=0)
