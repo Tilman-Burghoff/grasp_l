@@ -41,6 +41,12 @@ class RobotServer:
             while self.bot.getTimeToEnd() > 0:
                 self.bot.sync(self.C)
 
+        elif command == "moveTo":
+        
+            self.bot.moveTo(message["q"], message["time_cost"])
+            while self.bot.getTimeToEnd() > 0:
+                self.bot.sync(self.C)
+
         elif command == "moveAutoTimed":
         
             self.bot.moveAutoTimed(message["path"], message["time_cost"])

@@ -52,6 +52,18 @@ class RobotAPI:
         success = reply["success"]
         return success
     
+    def moveTo(self, q: np.ndarray, time_cost: float = 1.) -> bool:
+        
+        message = {}
+        message["command"] = "moveTo"
+        message["q"] = q.tolist()
+        message["time_cost"] = time_cost
+
+        reply = self.send_message(message)
+        
+        success = reply["success"]
+        return success
+    
     def moveAutoTimed(self, path: np.ndarray, time_cost: float) -> bool:
         
         message = {}
