@@ -25,17 +25,17 @@ def solve_komo(komo: ry.KOMO, verbose: int=0) -> np.ndarray:
     return path
 
 
-def move_to_look(C: ry.Config, obj_frame_name: str, distance: float=.3, verbose: int=0) -> np.ndarray:
+def move_to_drop(C: ry.Config, obj_frame_name: str, distance: float=.3, verbose: int=0) -> np.ndarray:
     komo = ry.KOMO()
     komo.setConfig(C, True)
     komo.setTiming(1, 1, 1, 0)
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e0])
-    komo.addObjective([1.], ry.FS.positionRel, [obj_frame_name, "l_cameraWrist"], ry.OT.eq, [1e1], [0., 0., distance])
-    # komo.addObjective([1.], ry.FS.positionRel, [obj_frame_name, "r_cameraWrist"], ry.OT.eq, [1e1], [0., 0., distance])
-    komo.addObjective([1.], ry.FS.negDistance, ["l_cameraWrist", "table"], ry.OT.ineq, [-1e1], [-.5])
-    komo.addObjective([1.], ry.FS.scalarProductYZ, ["l_cameraWrist", "table"], ry.OT.ineq, [1e1], [-.7])
-    # komo.addObjective([1.], ry.FS.negDistance, ["r_cameraWrist", "table"], ry.OT.ineq, [-1e1], [-.5])
+
+    komo.addObjective([1.], ry.FS.positionRel, [obj_frame_name, "l_gripper"], ry.OT.eq, [1e1], [0., 0., -distance])
+    komo.addObjective([1.], ry.FS.scalarProductYZ, ["l_gripper", "table"], ry.OT.eq, [1e1])
+    komo.addObjective([1.], ry.FS.scalarProductXZ, ["l_gripper", "table"], ry.OT.eq, [1e1])
+    
     
     path = solve_komo(komo)
 
