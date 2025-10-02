@@ -11,7 +11,7 @@ class RobotServer:
     def __init__(self, address: str="tcp://*:1234", on_real: bool=False, verbose: int=0):
         
         self.C = ry.Config()
-        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle.g"))
+        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle_camera.g"))
         self.C.view(False)
         self.bot = ry.BotOp(self.C, on_real)
         self.bot.home(self.C)
@@ -20,7 +20,7 @@ class RobotServer:
         self.socket = context.socket(zmq.REP)
         self.address = address
         self.socket.bind(address)
-        self.bot.gripperClose(ry._left)
+        self.bot.getImageAndDepth('l_cameraWrist')
 
 
 
