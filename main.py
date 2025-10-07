@@ -1,7 +1,7 @@
 from robot_api import RobotAPI
 from vision import get_point_clouds
 from scenes import get_config_table
-from motions import move_to_drop, grasp_motion_global, look_with_angle
+from motions import move_to_drop, grasp_motion_global, look_with_angle, move_to_place
 from grasping import contact_graspnet_inference
 import komo_paths as kp
 import numpy as np
@@ -16,7 +16,7 @@ ON_REAL = True
 def find_grasps(C, robot_api: RobotAPI, disturb=False) -> tuple[bool, np.ndarray, np.ndarray]:
     if disturb:
         q = C.getJointState()
-        q += np.random.randn(len(q)) * .1
+        q += np.random.randn(len(q)) * .05
         robot_api.moveTo(q)
         C.setJointState(q)
     pcs, rgbs = get_point_clouds(C, camera_frame_names, robot_api, on_real=ON_REAL, verbose=0)#, distance_boundaries=(0.15, 0.7))
@@ -101,14 +101,18 @@ else:
     raise RuntimeError("No feasible grasps found")
     
 
+
+
 if ON_REAL:
     robot_api.home()
     robot_api.move(approach, [5.])
     robot_api.move(grasp, [5.])
+    C.setJointState(grasp[-1])
+    gripper_pose = C.getFrame('l_gripper').getPose()
     robot_api.gripper_close()
     robot_api.home()
-    path = move_to_drop(C, 'marker', distance=.1, verbose=1)
-    robot_api.move(path, [5.])
+    place = move_to_place(C, gripper_pose)
+    robot_api.moveTo(place)
     robot_api.gripper_open()
     robot_api.home()
     # robot_api.close()

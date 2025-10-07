@@ -24,6 +24,27 @@ def solve_komo(komo: ry.KOMO, verbose: int=0) -> np.ndarray:
     path = komo.getPath()
     return path
 
+def move_to_place(C, grasp_pose, offset=0.1, verbose=1):
+    xy_offset = np.random.randn(2) * offset
+    grasp_pose[:2] += xy_offset
+    grasp_pose[2] += 0.025
+    place_frame = C.addFrame('place').setPose(grasp_pose).setShape(ry.ST.marker, [.1])
+    C.view(True)
+
+    komo = ry.KOMO(C, 1,1,10,True)
+    komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
+    komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq)
+
+    komo.addObjective([], ry.FS.poseDiff, ['l_gripper', 'place'], ry.OT.eq)
+
+    
+    path = solve_komo(komo)
+
+    if verbose:
+        komo.view(True)
+
+    return path[-1]
+
 
 def move_to_drop(C: ry.Config, obj_frame_name: str, distance: float=.3, verbose: int=0) -> np.ndarray:
     komo = ry.KOMO()
@@ -36,12 +57,6 @@ def move_to_drop(C: ry.Config, obj_frame_name: str, distance: float=.3, verbose:
     komo.addObjective([1.], ry.FS.scalarProductYZ, ["l_gripper", "table"], ry.OT.eq, [1e1])
     komo.addObjective([1.], ry.FS.scalarProductXZ, ["l_gripper", "table"], ry.OT.eq, [1e1])
     
-    
-    path = solve_komo(komo)
-
-    if verbose:
-        komo.view(True)
-
     return path
 
 
