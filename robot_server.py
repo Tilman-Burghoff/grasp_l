@@ -49,7 +49,7 @@ class RobotServer:
 
         elif command == "moveAutoTimed":
         
-            self.bot.moveAutoTimed(message["path"], message["time_cost"])
+            self.bot.moveAutoTimed(message["path"], maxVel=message["velocity"], maxAcc=message["acceleration"])
             while self.bot.getTimeToEnd() > 0:
                 self.bot.sync(self.C)
 

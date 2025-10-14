@@ -64,12 +64,13 @@ class RobotAPI:
         success = reply["success"]
         return success
     
-    def moveAutoTimed(self, path: np.ndarray, time_cost: float) -> bool:
+    def moveAutoTimed(self, path: np.ndarray, maxVel: float=1.0, maxAcc: float=1.0) -> bool:
         
         message = {}
         message["command"] = "moveAutoTimed"
         message["path"] = path.tolist()
-        message["time_cost"] = time_cost
+        message["velocity"] = maxVel
+        message["acceleration"] = maxAcc
 
         reply = self.send_message(message)
         
