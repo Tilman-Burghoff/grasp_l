@@ -84,6 +84,7 @@ robot_api = RobotAPI(verbose=1, use_foundation_stereo=False, address="tcp://130.
 
 C = ry.Config()
 C.addFile("pandaSingle_camera.g")
+print("Config loaded")
 qHome = C.getJointState()
 marker = C.addFrame('marker').setPosition(MARKER_POS).setShape(ry.ST.marker, [.2])
 
@@ -101,7 +102,7 @@ while True:
         raise RuntimeError("No feasible grasps found")
         
 
-    robot_api.move(approach, [5.])
+    robot_api.moveAutoTimed(approach, 0.5, 0.5)
     robot_api.move(grasp, [5.])
     C.setJointState(grasp[-1])
     gripper_pose = C.getFrame('l_gripper').getPose()

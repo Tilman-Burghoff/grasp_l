@@ -37,11 +37,20 @@ def move_to_place(C, grasp_pose, offset=0.1, verbose=1):
 
     komo.addObjective([], ry.FS.poseDiff, ['l_gripper', 'place'], ry.OT.eq)
 
-    
-    path = solve_komo(komo)
+    try:
+        path = solve_komo(komo)
 
-    if verbose:
-        komo.view(True)
+        return path[-1]
+    except:
+        print("pose matching not possible, trying relaxed constraints")
+
+    komo = ry.KOMO(C, 1,1,10,True)
+    komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
+    komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq)
+
+    komo.addObjective([], ry.FS.positionDiff, ['l_gripper', 'place'], ry.OT.eq)
+
+    path = solve_komo(komo)
 
     return path[-1]
 
@@ -93,7 +102,7 @@ def grasp_motion_global_from_look(C: ry.Config, grasp_pose: np.ndarray, verbose=
     grasp_frame = C.addFrame('grasp').setPose(grasp_pose).setShape(ry.ST.marker, [.1])
     q_start = C.getJointState()
 
-    komo = ry.KOMO(C, 2, 20, 2, True)
+    komo = ry.KOMO(C, 3, 20, 2, True)
 
     komo.addControlObjective([], 0, 1e-1)
     komo.addControlObjective([], 2, 1e-1)
@@ -102,28 +111,28 @@ def grasp_motion_global_from_look(C: ry.Config, grasp_pose: np.ndarray, verbose=
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e0])
 
     # keep behind xy plane to not accidentaly knock over the object
-    komo.addObjective([0.3], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq, [[1,0,0],[0,1,0]])
-    komo.addObjective([0.3], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.3]) # TODO target correct?
-    komo.addObjective([0.6,1.], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.1]) # TODO target correct?
+    komo.addObjective([1], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq, [[1,0,0],[0,1,0]])
+    komo.addObjective([1], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.3]) # TODO target correct?
+    komo.addObjective([1.25,2], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.1]) # TODO target correct?
 
-    komo.addObjective([1], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
+    komo.addObjective([2], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
     
     # orientation for final approach
     # we dont do quaternion bcs gripper is symmetric along xz plane (more DOF for us :) )
     # align gripper z with grasp z
-    komo.addObjective([1,2], ry.FS.scalarProductXZ, ['grasp', 'l_gripper'], ry.OT.eq)
-    komo.addObjective([1,2], ry.FS.scalarProductYZ, ['grasp', 'l_gripper'], ry.OT.eq)
-    komo.addObjective([1,2], ry.FS.scalarProductZZ, ['grasp', 'l_gripper'], ry.OT.ineq, [-1]) # scalar of z axis > 0
+    komo.addObjective([2,3], ry.FS.scalarProductXZ, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([2,3], ry.FS.scalarProductYZ, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([2,3], ry.FS.scalarProductZZ, ['grasp', 'l_gripper'], ry.OT.ineq, [-1]) # scalar of z axis > 0
     # align gripper x with grasp x (up to 180deg rotation)
-    komo.addObjective([1,2], ry.FS.scalarProductXY, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([2,3], ry.FS.scalarProductXY, ['grasp', 'l_gripper'], ry.OT.eq)
 
     # approach in straight line
-    komo.addObjective([1,2], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.eq, [[1e1,0,0],[0,1e1,0]])
+    komo.addObjective([2,3], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.eq, [[1e1,0,0],[0,1e1,0]])
 
-    komo.addObjective([2], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq, [1e1])
+    komo.addObjective([3], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq, [1e1])
 
     path = solve_komo(komo, verbose=verbose)
-    return path[:20], path[20:]
+    return path[:40], path[40:]
 
 
 
