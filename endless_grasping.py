@@ -83,7 +83,7 @@ camera_frame_names = ["l_cameraWrist"]
 robot_api = RobotAPI(verbose=1, use_foundation_stereo=False, address="tcp://130.149.82.15:1234", on_real=True)
 
 C = ry.Config()
-C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle_camera.g"))
+C.addFile("pandaSingle_camera.g")
 qHome = C.getJointState()
 marker = C.addFrame('marker').setPosition(MARKER_POS).setShape(ry.ST.marker, [.2])
 

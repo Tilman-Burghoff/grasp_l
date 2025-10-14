@@ -7,7 +7,7 @@ table (origin): { Q: [0, 0, -.05], shape: ssBox, size: [2.3, 1.24, .1, .02], col
 
 ## two pandas
 Prefix: "l_"
-Include: <../panda/panda.g>
+Include: <../../../../$RAI_PATH/panda/panda.g>
 Prefix: False
 
 ## position them on the table

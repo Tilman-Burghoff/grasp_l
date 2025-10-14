@@ -11,10 +11,10 @@ class RobotServer:
     def __init__(self, address: str="tcp://*:1234", on_real: bool=False, verbose: int=0):
         
         self.C = ry.Config()
-        self.C.addFile(ry.raiPath("../rai-robotModels/scenarios/pandaSingle_camera.g"))
+        self.C.addFile("pandaSingle_camera.g")
         self.C.view(False)
         self.bot = ry.BotOp(self.C, on_real)
-        self.bot.home(self.C)
+        self.bot.moveTo(self.bot.get_qHome())
         self.verbose = verbose
         context = zmq.Context()
         self.socket = context.socket(zmq.REP)
