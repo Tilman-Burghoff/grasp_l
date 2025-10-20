@@ -45,6 +45,49 @@ def show_object(C: ry.Config, left_is_holder: bool=True, distance=0.2, verbose=1
     return path
 
 
+def dual_grasp(C, next_gripper, active_gripper, grasp_pose, verbose=0):
+    # grasp motion for two hands
+    C.addFrame("rel_grasp", active_gripper).setPose(grasp_pose)
+    C.addFrame("approach", "rel_grasp").setPose(grasp_pose).setRelativePosition([0,0,-0.1])
+
+    qStart = C.getJointState()
+
+
+    komo = ry.KOMO(C, 2, 20, 2, True)
+
+    komo.addControlObjective([], 0, 1e-1)
+    komo.addControlObjective([], 2, 1e-1)
+
+    komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
+    komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq, [1e0])
+
+    komo.addObjective([1], ry.FS.positionDiff, [next_gripper, "approach"], ry.OT.eq)
+
+    komo.addObjective([1], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
+    komo.addObjective([1,3], ry.FS.pose, [active_gripper], ry.OT.eq)
+    
+    # orientation for final approach
+    # we dont do quaternion bcs gripper is symmetric along xz plane (more DOF for us :) )
+    # align gripper z with grasp z
+    komo.addObjective([1,3], ry.FS.scalarProductXZ, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([1,3], ry.FS.scalarProductYZ, ['grasp', 'l_gripper'], ry.OT.eq)
+    komo.addObjective([1,3], ry.FS.scalarProductZZ, ['grasp', 'l_gripper'], ry.OT.ineq, [-1]) # scalar of z axis > 0
+    # align gripper x with grasp x (up to 180deg rotation)
+    komo.addObjective([1,3], ry.FS.scalarProductXY, ['grasp', 'l_gripper'], ry.OT.eq)
+
+    # approach in straight line
+    komo.addObjective([1,3], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.eq, [[1e1,0,0],[0,1e1,0]])
+
+    komo.addObjective([2], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq, [1e1])
+
+    komo.addObjective([3], ry.FS.positionDiff, [next_gripper, "approach"])
+
+    komo.addObjective([4], ry.FS.qItself, [], ry.OT.eq, [1], qStart)
+
+    path = solve_komo(komo, verbose=verbose)
+    return path[:40], path[40:]
+
+
 def move_to_place(C, grasp_pose, offset=0.1, verbose=1):
     xy_offset = np.random.randn(2) * offset
     grasp_pose[:2] += xy_offset
@@ -87,6 +130,8 @@ def move_to_drop(C: ry.Config, obj_frame_name: str, distance: float=.3, verbose:
     komo.addObjective([1.], ry.FS.scalarProductYZ, ["l_gripper", "table"], ry.OT.eq, [1e1])
     komo.addObjective([1.], ry.FS.scalarProductXZ, ["l_gripper", "table"], ry.OT.eq, [1e1])
     
+    path = solve_komo(komo, verbose)
+
     return path
 
 
