@@ -63,6 +63,9 @@ class RobotServer:
                 self.bot.gripperClose(which)
             elif "open" in command:
                 self.bot.gripperMove(which)
+            elif "width" in command:
+                width = self.bot.getGripperPos(which)
+                message["width"] = width
             else:
                 raise Exception(f"Gripper command {message['command']} not implemented.")
             

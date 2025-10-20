@@ -107,6 +107,9 @@ while True:
     C.setJointState(grasp[-1])
     gripper_pose = C.getFrame('l_gripper').getPose()
     robot_api.gripper_close()
+    if robot_api.get_gripper_width() < 0.02:
+        print("Grasp failed, generating new grasp")
+        continue
     robot_api.home()
     place = move_to_place(C, gripper_pose)
     robot_api.moveTo(place)

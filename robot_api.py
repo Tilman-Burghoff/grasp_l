@@ -109,6 +109,16 @@ class RobotAPI:
         success = reply["success"]
         return success
     
+    def get_gripper_width(self, left_gripper: bool=True) -> float|None:
+        
+        message = {}
+        message["command"] = "gripper_width"
+        message["gripper_id"] = "left" if left_gripper else "right"
+
+        reply = self.send_message(message)
+        width = reply.get("width", None)
+        return width
+    
     def close(self) -> bool:
         
         message = {}
