@@ -8,6 +8,7 @@ import numpy as np
 import robotic as ry
 import matplotlib.pyplot as plt
 import torch
+from time import sleep
 
 MARKER_POS = np.array([-.5, .3, .65])
 NUMBER_OF_TRIES = 10 # number of tries to find a feasible grasp
@@ -107,10 +108,12 @@ while True:
     C.setJointState(grasp[-1])
     gripper_pose = C.getFrame('l_gripper').getPose()
     robot_api.gripper_close()
-    if robot_api.get_gripper_width() < 0.02:
-        print("Grasp failed, generating new grasp")
-        continue
     robot_api.home()
+    sleep(1)
+    if robot_api.get_gripper_width() < 0.001:
+        print("Grasp failed, generating new grasp")
+        robot_api.gripper_open()
+        continue
     place = move_to_place(C, gripper_pose)
     robot_api.moveTo(place)
     robot_api.gripper_open()
