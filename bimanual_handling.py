@@ -87,7 +87,7 @@ def is_graspable(C, gripper_name):
     return ret.feasible
 
 
-def find_grasp(C, robot_api, left_is_holder, disturb=False):
+def find_dual_grasp(C, robot_api, left_is_holder, disturb=False):
     cam_name = "r_cameraWrist" if left_is_holder else "l_cameraWrist"
     active_gripper = "l_gripper" if left_is_holder else "r_gripper"
     next_gripper = "r_gripper" if left_is_holder else "l_gripper"
@@ -99,11 +99,11 @@ def find_grasp(C, robot_api, left_is_holder, disturb=False):
         C.setJointState(q)
     pcs, rgbs = get_point_clouds(C, [cam_name], robot_api, on_real=True, verbose=0)#, distance_boundaries=(0.15, 0.7))
 
-    grasps, scores = contact_graspnet_inference(pcs[0], rgbs[0], local_regions=False, filter_grasps=False, forward_passes=2, verbose=0, from_top=10)
+    grasps, scores = contact_graspnet_inference(pcs[0], rgbs[0], local_regions=False, filter_grasps=False, forward_passes=2, verbose=1, from_top=10)
 
 
     if len(grasps) == 0:
-        return False, None, None
+        return False, None, None, None
 
 
     camera_frame = C.getFrame(cam_name)
@@ -120,7 +120,7 @@ def find_grasp(C, robot_api, left_is_holder, disturb=False):
     print(len(filtered_grasps), "grasps after filtering")
 
     if len(filtered_grasps) == 0:
-        return False, None, None
+        return False, None, None, None
 
     filtered_grasps.sort(key = lambda g: g[1])
 
@@ -132,15 +132,15 @@ def find_grasp(C, robot_api, left_is_holder, disturb=False):
             print("Found a feasible grasp")
             try:
                 C.setJointState(q)
-                approach, grasp = dual_grasp(C, next_gripper, active_gripper, relative_grasp_frame.getPose(), verbose=10)
+                approach, grasp, retract = dual_grasp(C, next_gripper, active_gripper, relative_grasp_frame.getPose(), verbose=10)
                 print("Grasp executable")
                 C.setJointState(q)
-                return True, approach, grasp
+                return True, approach, grasp, retract
             except:
                 continue
 
     C.setJointState(q)
-    return False, None, None
+    return False, None, None, None
 
 
     
@@ -155,36 +155,40 @@ print("Config loaded")
 qHome = C.getJointState()
 marker = C.addFrame('marker').setPosition(MARKER_POS).setShape(ry.ST.marker, [.2])
 
-path = look_with_angle(C, 'marker', distance=.4, angle=np.pi/6, verbose=0)
+for j in range(NUMBER_OF_TRIES):
+    path = look_with_angle(C, 'marker', distance=.4, angle=np.pi/6, verbose=0)
 
-robot_api.move(path, [5.])
-C.setJointState(path[-1])
+    robot_api.move(path, [5.])
+    C.setJointState(path[-1])
 
-for i in range(NUMBER_OF_TRIES):
-    success, approach, grasp = find_initial_grasps(C, robot_api, disturb=(i>0))
-    if success:
-        break
+    for i in range(NUMBER_OF_TRIES):
+        success, approach, grasp = find_initial_grasps(C, robot_api, disturb=(i>0))
+        if success:
+            break
+    else:
+        raise RuntimeError("No feasible grasps found")
+        
+
+    robot_api.moveAutoTimed(approach, 0.5, 0.5)
+    robot_api.move(grasp, [5.])
+    C.setJointState(grasp[-1])
+    gripper_pose = C.getFrame('l_gripper').getPose()
+    robot_api.gripper_close()
+    if robot_api.get_gripper_width() < 0.001:
+        print("Grasp failed, generating new grasp")
+        robot_api.gripper_open()
+        continue
+    break
 else:
-    raise RuntimeError("No feasible grasps found")
-    
-
-robot_api.moveAutoTimed(approach, 0.5, 0.5)
-robot_api.move(grasp, [5.])
-C.setJointState(grasp[-1])
-gripper_pose = C.getFrame('l_gripper').getPose()
-robot_api.gripper_close()
-if robot_api.get_gripper_width() < 0.02:
-    raise RuntimeError("Grasp failed, object not in gripper")
+    raise RuntimeError("No grasp executed successfully")
 
 i = 0
 while True:
-    left_is_holder = i%2
+    left_is_holder = i%2 == 0
     path = show_object(C, left_is_holder, distance=0.3)
     robot_api.moveAutoTimed(path, 0.5, 0.5)
-    
     for i in range(NUMBER_OF_TRIES):
-        success, approach, grasp = find_grasp(C, robot_api, disturb=(i>0))
-        raise NotImplementedError("Approach, grasp, retract needed!!")
+        success, approach, grasp, retract = find_dual_grasp(C, robot_api, left_is_holder, disturb=(i>0))
         if success:
             break
     else:
@@ -193,6 +197,8 @@ while True:
     robot_api.moveAutoTimed(approach, 0.5, 0.5)
     robot_api.move(grasp, [5.])
     C.setJointState(grasp[-1])
-    robot_api.gripper_close()
-    if robot_api.get_gripper_width() < 0.02:
+    robot_api.gripper_close(1 - left_is_holder)
+    robot_api.gripper_open(left_is_holder)
+    robot_api.moveAutoTimed(retract, 0.5, 0.5)  
+    if robot_api.get_gripper_width(left_is_holder) < 0.001:
         raise RuntimeError("Grasp failed, object not in gripper")

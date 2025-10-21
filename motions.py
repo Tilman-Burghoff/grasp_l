@@ -29,18 +29,23 @@ def show_object(C: ry.Config, left_is_holder: bool=True, distance=0.2, verbose=1
     holder_prefix = 'l_' if left_is_holder else 'r_'
     watcher_prefix = 'r_' if left_is_holder else 'l_'
     cam_name = f"{watcher_prefix}cameraWrist"
-    target_name = f"{holder_prefix}gripper"
+    active_gripper = f"{holder_prefix}gripper"
 
-    komo = ry.KOMO(C, 1, 20, 0, True)
+    komo = ry.KOMO(C, 1, 20, 2, True)
+    komo.addControlObjective([], 0, 1e-1)
+    komo.addControlObjective([], 2, 1e-1)
+
     komo.addObjective([], ry.FS.jointLimits, [], ry.OT.ineq)
     komo.addObjective([], ry.FS.accumulatedCollisions, [], ry.OT.eq)
 
-    komo.addObjective([1], ry.FS.position, [target_name], ry.OT.ineq, [0,0,-1], [-0.8])
+    komo.addObjective([1], ry.FS.position, [active_gripper], ry.OT.ineq, [0,0,-1], [-0.8])
 
-    komo.addObjective([1], ry.FS.negDistance, [cam_name, target_name], ry.OT.eq, [1], [-distance])
-    komo.addObjective([1], ry.FS.positionRel, [target_name, cam_name], ry.OT.eq, [[1,0,0],[0,1,0]]) # look at gripper
-    komo.addObjective([1], ry.FS.scalarProductYZ, [cam_name, 'origin'], ry.OT.ineq, [1], [-.7]) # keep cam upright
+    komo.addObjective([1], ry.FS.negDistance, [cam_name, active_gripper], ry.OT.eq, [1], [-distance])
+    komo.addObjective([1], ry.FS.positionRel, [active_gripper, cam_name], ry.OT.eq, [[1,0,0],[0,1,0]]) # look at gripper
+    komo.addObjective([1], ry.FS.vectorZDiff, [cam_name, active_gripper], ry.OT.eq)
+    komo.addObjective([1], ry.FS.scalarProductYZ, [cam_name, 'origin'], ry.OT.ineq, [0.1], [-.7]) # keep cam upright
 
+    komo.addObjective([1], ry.FS.qItself, [], ry.OT.eq, [1], order=1) # break
     path = solve_komo(komo, verbose=verbose)
     return path
 
@@ -85,7 +90,7 @@ def dual_grasp(C, next_gripper, active_gripper, grasp_pose, verbose=0):
     komo.addObjective([4], ry.FS.qItself, [], ry.OT.eq, [1], qStart)
 
     path = solve_komo(komo, verbose=verbose)
-    return path[:40], path[40:]
+    return path[:20], path[20:40], path[40:]
 
 
 def move_to_place(C, grasp_pose, offset=0.1, verbose=1):
@@ -178,7 +183,7 @@ def grasp_motion_global_from_look(C: ry.Config, grasp_pose: np.ndarray, verbose=
 
     # keep behind xy plane to not accidentaly knock over the object
     komo.addObjective([1], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.eq, [[1,0,0],[0,1,0]])
-    komo.addObjective([1], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.3]) # TODO target correct?
+    komo.addObjective([1], ry.FS.positionDiff, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.2]) # TODO target correct?
     komo.addObjective([1.25,2], ry.FS.positionRel, ['l_gripper', 'grasp'], ry.OT.ineq, [0,0,-1e0], [0,0,.1]) # TODO target correct?
 
     komo.addObjective([2], ry.FS.jointState, [], ry.OT.eq, [1], order=1) # stop at approach point
