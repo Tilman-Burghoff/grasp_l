@@ -9,10 +9,18 @@ table (origin): { Q: [0, 0, -.05], shape: ssBox, size: [2.3, 1.24, .1, .02], col
 Prefix: "l_"
 Include: <../../../../$RAI_PATH/panda/panda.g>
 Prefix: False
+Prefix: "r_"
+Include: <../../../../$RAI_PATH/panda/panda.g>
+Prefix: False
 
 ## position them on the table
 Edit l_panda_base (origin): { Q: "t(-.4 -.3 .0) d(90 0 0 1)", motors, joint: rigid }
 #Edit l_panda_base (origin): { Q: "t(-.4008 -.2204 .0009) d(90 0 0 1)", motors, joint: rigid }
+Edit r_panda_base (origin): { Q: "t( .4 -.3 .0) d(90 0 0 1)", motors, joint: rigid }
+
+## make gripper dofs inactive (unselected)
+Edit l_panda_finger_joint1: { joint_active: False }
+Edit r_panda_finger_joint1: { joint_active: False }
 
 ## make gripper dofs inactive (unselected)
 # Edit l_panda_finger_joint1: { joint_active: False }
@@ -26,6 +34,12 @@ camera(world): {
 }
 
 l_cameraWrist(l_panda_joint7): {
+ Q: [-0.0196589, 0.0456112, 0.166679, 0.383958, 0.0123904, -0.007478, -0.923237]
+ shape: camera, size: [.1],
+ focalLength: 0.495, width: 640, height: 360, zRange: [.1, 10]
+}
+
+r_cameraWrist(r_panda_joint7): {
  Q: [-0.0196589, 0.0456112, 0.166679, 0.383958, 0.0123904, -0.007478, -0.923237]
  shape: camera, size: [.1],
  focalLength: 0.495, width: 640, height: 360, zRange: [.1, 10]
